@@ -2,7 +2,7 @@
 
 shumoku v1.0.0 リライトの設計記録。現在の設計と、そこに至るまでに却下した案を残す。
 
-書き方は `skills/design-notes/SKILL.md` に従う。
+書き方は `.agents/skills/design-notes/SKILL.md` に従う。
 
 ## 目次
 

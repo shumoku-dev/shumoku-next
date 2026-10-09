@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "grep -Eq '\"file_path\" *: *\"[^\"]*/notes/[^\"]*\\.md\"' && printf '%s' '{\"hookSpecificOutput\":{\"hookEventName\":\"PreToolUse\",\"additionalContext\":\"設計メモを編集しようとしている。まだ読んでいなければ、先に skills/design-notes/SKILL.md を読み、そのルールに従うこと。\"}}' || true"
+            "command": "sh \"$(git rev-parse --show-toplevel)/.agents/hooks/design-notes-reminder.sh\""
           }
         ]
       }
