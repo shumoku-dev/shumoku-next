@@ -2,8 +2,7 @@
 name: test-audit
 description:
   Audit what each test guarantees. It reports tests to delete or merge, behaviour changed with no
-  test covering it, and tests that cannot fail. Run it after writing or changing any test, before
-  proposing a commit.
+  test covering it, and tests that cannot fail. Use it when asked to audit tests.
 ---
 
 # Test audit
@@ -16,20 +15,49 @@ Test count and coverage percentage are not the goal.
 
 ## Scope
 
-Staged changes by default:
+By default, the changes since the last audit on this branch, uncommitted ones included:
 
 ```sh
-git diff --cached --stat
-git diff --cached
+git diff <last audited commit>
 ```
 
-Nothing staged, read `git diff HEAD` instead. The user can name a file or `all` for the whole suite.
+With no record, or when a rebase dropped the recorded commit from the history, use
+`git diff main...HEAD` plus `git diff HEAD` for uncommitted changes.
+
+The user can name another scope instead: a commit range, a file, or `all` for the whole suite.
+
+## Record
+
+Each audit leaves a record for the next one, at
+`$(git rev-parse --git-path test-audit)/<branch>.md`. It sits in the git directory, so it is never
+committed. A branch name with `/` puts it in a subdirectory, so create the directory first.
+Overwrite the file after each audit:
+
+```markdown
+commit: <HEAD at the audit>
+date: <YYYY-MM-DD>
+scope: <the diff command used>
+model: <the model and reasoning effort the audit ran on>
+
+<the report>
+
+## Decisions
+
+- <file:line>: fixed | declined, <the user's reason>
+```
+
+Fill in Decisions once the user answers. Carry declined findings over from the previous record
+while the code they point at is unchanged.
+
+Before an audit, read the record. Hand the audit agent the declined findings so it does not raise
+them again unless the code changed.
+
+Move `commit` forward only when the audit covered everything since the previous record. An audit of
+a narrower scope the user named leaves `commit` as it was.
 
 ## Run it in a separate agent
 
-The agent that wrote the tests is the worst judge of them, so another agent runs the audit. It runs
-on the same model as the session that launches it: every finding is a judgment call, so pass no
-model override and never a cheaper model.
+The agent that wrote the tests is the worst judge of them, so another agent runs the audit.
 
 Give it the three passes below, the scope, and the diff. It reads the tests and the source they
 cover, runs the mutation checks, and returns the report. The test bodies stay out of the launching
@@ -37,8 +65,20 @@ session that way.
 
 For `all`, launch one agent per test directory so no agent reads the whole suite.
 
-In Claude Code that is the `general-purpose` agent, which inherits the parent model on its own.
-Other harnesses name their own agents, so check that the one you pick runs on the parent's model.
+In Claude Code that is the `general-purpose` agent, with the `model` and `effort` the user picked.
+
+## Pick the model
+
+Ask the user which model and reasoning effort the audit agent runs on before launching it. Skip the
+question when the request already names them.
+
+Offer only what the harness can launch now, read from its tool or config, not model names from
+memory. Put the `model` from the record first as the recommended choice. With no record, recommend
+the strongest model the harness offers at high effort. Finding gaps means working out which
+behaviour changed and what would catch it, and a weak model misses them without saying so.
+
+Ask with the harness's question tool, such as `AskUserQuestion` in Claude Code, or in plain text
+where it has none.
 
 ## Pass 1: cuts
 
