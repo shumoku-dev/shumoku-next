@@ -707,3 +707,22 @@ Hub と Drafter について:
 ### テキストの幅の計測で確かめること
 
 - 同じフォントでも、ブラウザが描いた幅と計算した幅がどれだけずれるか（ヒンティング、サブピクセルの配置）。ずれをノードの余白で吸収できるか
+
+## import の境界の検査
+
+パッケージの中で、ディレクトリの外から読める export を制限するかどうかと、検査に使うツールを決める。判断は保留している。パッケージをまたぐ import は、`package.json` の `exports` が制限するので（「パッケージの分割」）、対象ではない。
+
+候補は次の 2 つである。どちらも eslint-plugin-import-access と同じ機能とオプションを持ち、JSDoc の `@package` と `@public` で export を読める範囲を決める。`.ts` 同士の import には同じ結果を返した。
+
+- [ImportLint](https://github.com/uhyo/import-lint)（0.1.10 で試した）: 独立のコマンドで、TypeScript に依存しない。`vp check` とは別に実行する
+- [oxlint-plugin-import-access](https://github.com/bitkey-oss/oxlint-plugin-import-access)（1.1.2 で試した）: Oxlint の JS プラグインで、`vp check` の中で動く。TypeScript 7 の不安定な API を使うので、TypeScript 6.0 では読み込めない
+
+試した設定は、すべてのディレクトリを境界にし（`packageDirectory: ["**"]`）、タグのない export を境界の中からしか読めなくするもの（`defaultImportability: "package"`）である。ディレクトリの外から読めるのは、`index.ts` が再エクスポートしたものと `@public` を付けたものだけになる。
+
+どちらのツールも、`.svelte` ファイルの `<script>` に書いた import を検査しない。`libs/core` は Svelte を使わないので影響を受けず、`libs/renderer` とアプリの SPA が影響を受ける。`.ts` から別のディレクトリの `.svelte` を読む import は、ImportLint だけが検査する。
+
+決まっていないこと:
+
+- 境界を、すべてのディレクトリにするか、特定の名前のディレクトリ（`*.package` など）だけにするか
+- `.svelte` の `<script>` の import が検査されないことを受け入れるか
+- TypeScript を 7 系に上げるときに、oxlint-plugin-import-access へ乗り換えるか
