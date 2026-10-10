@@ -1,0 +1,7 @@
+packages:
+  - apps/*
+  - libs/*
+
+trustPolicy: no-downgrade
+blockExoticSubdeps: true
+strictDepBuilds: true
