@@ -1,0 +1,18 @@
+{
+  "description": "Remind Codex to load the design-notes skill before editing design notes.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"$(git rev-parse --show-toplevel)/.agents/hooks/design-notes-reminder.sh\"",
+            "statusMessage": "Checking design-notes guidance",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}
