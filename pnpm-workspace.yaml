@@ -3,6 +3,8 @@ packages:
   - libs/*
 
 catalog:
+  '@types/node': ^26.6.5
+  typescript: ~6.0.3
   vite-plus: 1.1.0
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
 
@@ -16,3 +18,5 @@ peerDependencyRules:
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
 strictDepBuilds: true
+minimumReleaseAgeExclude:
+  - '@types/node@26.6.5'
