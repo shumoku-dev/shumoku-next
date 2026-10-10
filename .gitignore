@@ -1,1 +1,4 @@
 node_modules
+
+# vp config が生成する Git フックのディスパッチャ
+.vite-hooks/_

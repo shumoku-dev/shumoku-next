@@ -2,6 +2,17 @@ packages:
   - apps/*
   - libs/*
 
+catalog:
+  vite-plus: 1.1.0
+  vite: npm:@voidzero-dev/vite-plus-core@1.1.0
+
+overrides:
+  vite@*: 'catalog:'
+
+peerDependencyRules:
+  allowAny:
+    - vite
+
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
 strictDepBuilds: true

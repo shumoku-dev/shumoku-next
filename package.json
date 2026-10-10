@@ -2,5 +2,11 @@
   "name": "shumoku",
   "version": "0.0.0",
   "private": true,
-  "type": "module"
+  "type": "module",
+  "scripts": {
+    "prepare": "vp config --no-agent"
+  },
+  "devDependencies": {
+    "vite-plus": "catalog:"
+  }
 }
