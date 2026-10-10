@@ -1,13 +1,13 @@
-import { defineConfig } from 'vite-plus';
+import { defineConfig } from "vite-plus";
 
-import fmt from './oxfmt.config';
-import lint from './oxlint.config';
+import fmt from "./oxfmt.config";
+import lint from "./oxlint.config";
 
 export default defineConfig({
   fmt,
   lint,
   staged: {
-    '*': 'vp check --fix',
+    "*": "vp check --fix",
   },
   run: {
     cache: true,

@@ -12,6 +12,8 @@ overrides:
   vite@*: "catalog:"
 
 peerDependencyRules:
+  allowedVersions:
+    vite: "*"
   allowAny:
     - vite
 
