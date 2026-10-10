@@ -399,6 +399,198 @@ Scala と Elixir は、サーバーの言語としては悪くないが、リポ
 - 権限や担当を分けたい。担当は CODEOWNERS で表せる。リポジトリへの書き込み権限まで分けたいなら、リポジトリを分ける理由になる
 - 言語が混ざる。構成 B では Rust と TypeScript が同居するが、Cargo のワークスペースと bun のワークスペースは 1 つのリポジトリに共存できる
 
+## パッケージの分割
+
+構成 A.2（「使用言語の選定」）を選ぶ場合の、モノレポのワークスペースの分け方と、npm に公開するパッケージを決める。モノレポにするかどうかは「リポジトリの構成」で決める。次の構成に傾いている。
+
+```
+libs/core/        private
+libs/renderer/    公開（@shumoku/renderer）
+libs/catalog/     private
+apps/cli/         公開（@shumoku/cli）
+apps/hub/         private
+apps/drafter/     private
+apps/docs/        private
+```
+
+依存の向きを次のように制限する。
+
+- `libs/core` は、ほかのワークスペースのパッケージに依存しない
+- `libs/renderer` と `libs/catalog` は `libs/core` に依存する
+- `apps/*` は `libs/*` に依存する。`libs/*` は `apps/*` に依存しない
+- `libs/renderer` は `libs/catalog` に依存しない
+
+### 製品の名前
+
+パッケージとディレクトリの名前は、次の製品の名前に合わせる。
+
+- shumoku: ファイル形式と、そのレンダラーの名前。mermaid と同じ使い方である
+- Shumoku Hub: リライト元の server に当たる。複数のデータソースから集める場所という意味で Hub にする
+- Shumoku Drafter: リライト元の editor に当たる。この名前は合意が取れている
+
+Hub のほかに、次の名前を検討した。
+
+- Collector は、OpenTelemetry Collector のように、集めて転送するだけで画面を持たないエージェントに見える
+- Nexus は Cisco のスイッチの製品名、Central は Aruba Central と重なる
+- Atlas は、集まった図を見る場所という意味になり、データソースから集める意味が弱い
+- Server は誤解がないが、何をするサーバーかが伝わらない
+
+Hub には、Docker Hub のようにベンダーが運営する共有のサービスに見えるおそれがある。説明文にセルフホストのサーバーであると書く。
+
+### コアを private にしてレンダラーにバンドルする
+
+コアのドメインロジック（JSON Schema と生成した型、パース、レイアウト、観測データの統合、シーンの組み立て、レイアウトの入力になるテーマの数値）は `libs/core` に置き、npm には公開しない。Hub のサーバーはレイアウトの計算（design.md §1.3）でコアだけを使う。
+
+`libs/shumoku` の 1 パッケージにまとめず、コアとレンダラーを分ける理由:
+
+- コアの `package.json` に Svelte を書かなければ、コアから Svelte を読み込めない。tsconfig の `lib` から DOM を外すことと、関数型スタイルの lint（「構成 A: すべて TypeScript」）も、パッケージの単位で掛けられる
+- レンダラーだけを変えたときに、コアのビルドとテスト、Hub のサーバーのテストを省ける
+
+コアを公開しない理由:
+
+- shumoku は、部品を組み合わせるライブラリとしてではなく、製品として使ってもらう。外部に約束するのは、ファイル形式（JSON Schema）、レンダラーのコンポーネントの props、CLI のコマンドだけにする
+- コアを公開すると、レイアウトの関数やシーンの型が semver の対象になる。レイアウトエンジンの境界（「レイアウトエンジンの境界」）は決まっていない
+
+コアを公開しないので、次の作業が要る。
+
+- `@shumoku/renderer` は、コアを依存に書けないので、ビルドでコアをバンドルする。`.d.ts` もコアの型を取り込んでまとめる（tsdown や api-extractor でできるが、試していない）
+- `@shumoku/renderer` は、形式の型（`NetworkGraph` など）をエクスポートする。利用者がグラフのオブジェクトをコンポーネントに渡すためである。レイアウトの関数と中間の型はエクスポートしない
+- CLI のビルドでは、コアを取り込み済みの `@shumoku/renderer` のビルド結果ではなく、レンダラーのソースをバンドルする。ビルド結果とコアを両方バンドルすると、CLI にコアが 2 つ入る
+
+Svelte を使わずにレイアウトだけを使う利用者（YAML の検証だけをしたい、別のレンダラーを書きたい）は対象にしない。YAML の検証は CLI のコマンドで提供できる。
+
+テキストの計測をフォントのデータから行う（「テキストの幅の計測」）なら、計測とフォントのファイルはコアに入り、Hub のサーバーにもフォントが入る。
+
+### レンダラーをフレームワークごとに分けない
+
+レンダラーは `@shumoku/renderer` の 1 パッケージにし、フレームワークごとの入り口はパスで分ける。リライト元は `@shumoku/renderer`、`@shumoku/renderer-svg`、`@shumoku/renderer-html`、`@shumoku/renderer-png` に分けていた。
+
+- 利用者のバンドルに入るのは、読み込んだパスのコードだけである
+- React、Vue、Svelte は optional な peer の依存にする
+- リリースする版の組み合わせを、利用者が考えなくて済む
+
+エクスポートは次の形を考えている。
+
+| パス | 中身 | Svelte のランタイム |
+|---|---|---|
+| `@shumoku/renderer` | 形式の型 | なし |
+| `@shumoku/renderer/svelte` | シーンを描くコンポーネント | peer |
+| `@shumoku/renderer/element` | 自分で書いた custom element | バンドルする |
+| `@shumoku/renderer/react`、`/vue` | 各フレームワークのラッパー | バンドルする |
+| `@shumoku/renderer/ssr` | SVG の文字列を返す関数 | バンドルする |
+| `@shumoku/renderer/schema.json` | `NetworkGraph` の JSON Schema | なし |
+
+- グラフを受け取ってレイアウトから描く入り口と、計算済みのシーンを受け取って描く入り口を分ける。Hub の SPA はサーバーが計算したレイアウトを描くだけなので（design.md §1.3）、同じ入り口にすると SPA にレイアウトエンジンが入る
+- custom element の登録（`customElements.define`）は副作用である。`sideEffects` に指定するか、登録する関数を利用者に呼んでもらう
+- Hub と Drafter の SPA も、外部の利用者と同じエクスポートを使う
+
+1 つのパッケージなので、React のラッパーだけの破壊的変更でも、パッケージ全体のメジャーが上がる。これは受け入れる。
+
+#### ラッパーは Declarative Shadow DOM を出力する custom element を包む
+
+React と Vue のラッパーは custom element を包む。custom element は Svelte の `customElement` オプションでは作らず、`HTMLElement` を継承するクラスを自分で書く。
+
+- サーバーでは、ラッパーが `svelte/server` の `render()` で Svelte のコンポーネントを文字列にし、`<template shadowrootmode="open">`（Declarative Shadow DOM）に入れて custom element のタグの中に出力する。ブラウザは JS を待たずに図を描く
+- クライアントでは、custom element が、shadow root に中身があれば Svelte の `hydrate()` を、なければ `mount()` を呼ぶ
+- Svelte のランタイムとコンポーネントは shadow root の中で動き、React や Vue のランタイムと DOM を共有しない
+- 色などの上書きは CSS 変数で行う（design.md §1.2）。CSS 変数は shadow root の中にも継承される
+
+この形は試作していない。実装の前に次を確かめる。
+
+1. shadow root を消さずに取得できるか。Declarative Shadow DOM で作られた shadow root を持つ要素に `attachShadow()` を呼ぶと、ブラウザは shadow root の中身を空にして返す（HTML の仕様の記述による。試していない）。コンストラクタでは `this.shadowRoot ?? this.attachShadow({ mode: 'open' })` のように、すでにある shadow root を使う
+2. ハイドレーションに使う props をクライアントにどう渡すか。`hydrate()` には、サーバーで描いたときと同じ props（グラフかシーン）が要る。React の Server Component から custom element にオブジェクトのプロパティは渡らないので、JSON にして HTML に埋め込むか、ラッパーを Client Component にする。JSON を埋め込むと、図の SVG とデータの両方が HTML に入る
+3. スタイルが shadow root に入るか。`render()` は `<style>` を `head` として返す。`<template>` の中に `<style>` を入れ、その状態で `hydrate()` が失敗しないか。クライアントで `mount()` したときに、Svelte が `<style>` を shadow root に入れるか
+4. クライアントでの画面遷移で図が出るか。Declarative Shadow DOM は HTML のパーサーだけが処理する。React がクライアントで `<template shadowrootmode>` を DOM に足しても shadow root にならない。custom element が `<template>` の子を見つけたら、自分で shadow root に移す必要がある
+5. React のハイドレーションで不一致の警告が出ないか。パーサーが `<template>` を shadow root に変えるので、React が期待する DOM に `<template>` がない。ラッパーが Server Component ならハイドレーションの対象にならないが、Client Component や Pages Router では対象になる
+6. Next.js と Vite で、利用者がバンドラーの設定を変えずに使えるか。custom element を定義するモジュールを `'use client'` のファイルから読み込み、クライアントのバンドルに入れる
+
+`@shumoku/renderer/ssr` の SVG の文字列を返す関数と CLI は、custom element を使わず、`render()` の結果をそのまま使う。Hub と Drafter の SPA は Svelte のコンポーネントを直接使う。
+
+#### 却下: Svelte の customElement オプションで custom element を作る
+
+Svelte のコンパイラの `customElement` オプションで custom element を作る案。クラスを自分で書かなくて済む。この方法で作った custom element は SSR では中身を出力しないので（Svelte 5 のドキュメントの記述による。試していない）、Next.js や Nuxt の SSR で図が出ず、design.md §1.1 の「組み込む利用者がビルド時や SSR で図を描ける」が Svelte の利用者にしか成り立たなくなるので却下した。
+
+#### 却下: ラッパーが Svelte のコンポーネントを直接包む
+
+ラッパーが、サーバーでは `svelte/server` で描いた SVG の文字列を埋め込み、クライアントでは Svelte のコンポーネントを React や Vue の DOM の中にマウントする案。custom element もラッパーの 1 つになる。Svelte と React が同じ DOM をハイドレーションしようとして衝突するので却下した。custom element と shadow root を挟めば、境界で分けられる。
+
+### CLI をレンダラーと分ける
+
+CLI は `@shumoku/cli` として、レンダラーとは別のパッケージで公開する。リライト元も同じ名前で公開している。
+
+- CLI は PNG を出力する（design.md §1.1）。リライト元の CLI が PNG への変換に使う `@resvg/resvg-js` はネイティブのバイナリである。レンダラーに CLI を同梱すると、ページに図を埋め込むだけの利用者にもネイティブのバイナリが入る
+- レンダラーのパッケージが、`bin`、ファイルの読み書き、引数の解析といった Node.js 専用のコードを持たない
+- CLI のオプションを変えても、レンダラーのメジャーが上がらない
+
+`@shumoku/renderer` と `@shumoku/cli` は、同じ版番号で一緒にリリースする。CLI がどの版のレンダラーで描くかを利用者が考えなくて済む。CLI だけの変更が頻繁になったら、版を分ける。
+
+mermaid も、本体と `@mermaid-js/mermaid-cli` を分けている。
+
+### カタログを private なパッケージにする
+
+機器のカタログ（リライト元の `@shumoku/catalog`）は `libs/catalog` に置き、npm には公開しない。Hub と Drafter はアプリなので、ビルドでカタログを取り込む。
+
+リライト元でカタログを使っているのは次の箇所である。
+
+- editor: 製品の一覧、PoE の計算、カタログのポートの展開
+- server: `discovery/deep-read.ts` の 1 か所。SNMP で読んだ `sysObjectID` から機種とベンダーを引く
+
+カタログはコアにもレンダラーにも入れない。カタログは図の形式の一部ではなく、機種を足すたびにレンダラーの版が上がるのを避ける。
+
+SNMP の読み取りをプラグインに移しても（「同時実行数の制限とキャンセルはプラグインのホストに閉じる」）、カタログのパッケージは要る。
+
+- Drafter はカタログを使い続ける
+- `sysObjectID` から機種を引く処理は、SNMP のプラグインに移っても残る。プラグインは QuickJS の中で動き（design.md §2.2）、ワークスペースのパッケージを実行時に読み込めない。カタログのデータをプラグインのビルドで取り込むか、ホストの関数として渡すかは決めていない
+
+外部からカタログを使いたいという要望が出たら、公開に切り替える。
+
+### Hub のパッケージの中の分け方
+
+`apps/hub` は 1 つのパッケージにし、中をディレクトリで分ける案を考えている。
+
+- API サーバーと SPA を `src/api` と `src/web` に分け、tsconfig と lint で境界を守る。リライト元は `apps/server/api` と `apps/server/web` の 2 つのパッケージに分けていた。SPA の依存は Vite がバンドルするので、すべて devDependencies に置ける
+- 組み込みのプラグインは `apps/hub/plugins/` のディレクトリに置く。QuickJS で動かすスクリプトで（design.md §2.3）、使うのは Hub だけである。リライト元は `libs/plugins/*` に 9 つのパッケージを置いていた
+
+Hub と Drafter で UI の部品（ボタンやダイアログ）を共有したくなったら、`libs/ui` のような private なパッケージに切り出す。最初は作らない。
+
+### パッケージの分割と CI
+
+リライト元は 9 つのパッケージ（`@shumoku/*` が 7 つ、`shumoku`、`@shumoku/cli`）を npm に公開している。公開するパッケージを 2 つにすると、次が減る。
+
+- 依存の順にビルドするパッケージの数
+- 版の決定、changelog、publish の回数。`@shumoku/renderer` と `@shumoku/cli` は同じ版番号でリリースするので、版の組み合わせも生じない
+
+ワークスペースのパッケージが 7 つなら、Turborepo などのタスクランナーを使わず、GitHub Actions のパスの絞り込みとジョブの依存だけで足りる見込みである。
+
+パッケージを減らすと、キャッシュと絞り込みの単位が粗くなる。パッケージの中のどこを変えても、そのパッケージ全体のビルドとテストが走る。コアとレンダラーを分けたので、最も重いと見込むレイアウトのテストは、コアを変えたときだけ走る。レンダラーの中（Svelte、React、Vue のラッパー）は、CI の時間が問題になるまで分けずに毎回すべて走らせる。
+
+### リライト元が公開しているパッケージの扱い
+
+リライト元が npm に公開しているパッケージのうち、v1.0.0 で名前を引き継ぐのは `@shumoku/renderer` と `@shumoku/cli` である。残りは非推奨にする。
+
+- `@shumoku/core` と `@shumoku/catalog` は private にするので、非推奨にする。外部で直接使っている利用者がいるかを、リライト元の作者に確かめる
+- `@shumoku/renderer-svg`、`@shumoku/renderer-html`、`@shumoku/renderer-png` は、`@shumoku/renderer` と `@shumoku/cli` に誘導する
+- スコープなしの `shumoku` は、非推奨にして `@shumoku/renderer` に誘導する案に傾いている。`@shumoku/renderer` を再エクスポートするだけのパッケージとして残す案もある。名前から推測して `npm i shumoku` する人が古い版を入れずに済むが、公開するパッケージが 1 つ増え、`/react` などのエクスポートと peer の依存を二重に書くことになる。名前はリライト元が持っているので、要望が出てから 1.x として出せる
+
+npm の名前を引き継ぐには、リライト元の作者の合意が要る。
+
+### パッケージの分割で決まっていないこと
+
+- Declarative Shadow DOM を出力する custom element が、SSR とハイドレーションで期待どおりに動くか（「ラッパーは Declarative Shadow DOM を出力する custom element を包む」）
+- プラグインのホストの API の `.d.ts`（design.md §2.1）をどこで配るか。プラグインは Hub でしか動かないので、`@shumoku/renderer` には入れない。型だけのパッケージを公開する案と、Hub からダウンロードさせる案がある
+- ファイル形式の版をファイルに書くか。Hub が保存したファイルを古い CLI が読む場合に要る。拡張子（`.shumoku.yaml` など）も決めていない
+- Hub の版を `@shumoku/renderer` と別に付けるか。レンダラーの版はライブラリの利用者に、Hub の版は運用者に向けたものである
+- スコープなしの `shumoku` の扱い（「リライト元が公開しているパッケージの扱い」）
+
+### パッケージの分割で採らない案
+
+- レンダラーと CLI を 1 つのパッケージ `shumoku` にまとめる案。`npx shumoku` で動き、リリースが 1 つで済む。PNG の変換に使うネイティブのバイナリを optional な peer の依存にするしかなく、PNG を出すには利用者が追加でインストールする必要がある（「CLI をレンダラーと分ける」）
+- コアとレンダラーを 1 つのパッケージにまとめ、境界をディレクトリごとの tsconfig と lint で守る案。コアをバンドルする作業が要らない。境界をパッケージで守る方が確実で、CI の絞り込みも効く（「コアを private にしてレンダラーにバンドルする」）
+- コアを `@shumoku/core` として公開し、レンダラーの通常の依存にする案。`.d.ts` をまとめる作業が要らない。コアの API が semver の対象になる（「コアを private にしてレンダラーにバンドルする」）
+- レンダラーをスコープなしの `shumoku` として公開する案。名前から中身がわからず、`@shumoku/cli` と名前がそろわない
+- レンダラーをフレームワークごとのパッケージに分ける案。読み込んだパスのコードだけがバンドルに入るので、分けても利用者のバンドルは小さくならない（「レンダラーをフレームワークごとに分けない」）
+- カタログを `apps/drafter` の中に置く案。Hub がカタログを使い続ける場合に切り出すことになる（「カタログを private なパッケージにする」）
+
 ## テキストの幅の計測
 
 レイアウトの計算に使うテキストの幅を、DOM に依存せずに測る方法を決める。CLI と Node.js のライブラリ（design.md §1.1）はどちらの構成でも作るので、ブラウザと Node.js で同じ方法で測り、同じレイアウトを出す。
