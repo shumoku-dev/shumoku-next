@@ -795,9 +795,11 @@ Renovate を使うには、Mend の GitHub App にリポジトリへの書き込
 Renovate の設定:
 
 - 週 1 回の PR は、日本時間の月曜 0 時から 4 時の間に作る（`schedule:earlyMondays` と `timezone: Asia/Tokyo`）
+- PR は人がマージする。オートマージは使わない。PR を放置しても、Renovate は対象ごとに同じ PR を作り直すので、PR は増えない
 - メジャー更新は承認制にする（`:approveMajorUpdates`）。Renovate が Dependency Dashboard の issue に一覧し、人がチェックを入れたものだけを PR にする。メジャー更新は移行の作業を伴うので、着手する時期を人が決める
-- 公開から 3 日経っていない版は入れない（`minimumReleaseAge`）。Renovate が npm のパッケージに勧める値で、npm が公開の取り消しを認める 72 時間を越える。pnpm にも同じ値を設定してある（`pnpm-workspace.yaml`）
+- 公開から 3 日経っていない版は入れない（`minimumReleaseAge`）。Renovate が npm のパッケージに勧める値で、npm が公開の取り消しを認める 72 時間を越える。pnpm と mise にも同じ値を設定してある（`pnpm-workspace.yaml`、`mise.toml`）
 - 脆弱性の修正の PR は待機期間を待たない。pnpm は脆弱性の修正を区別しないので、Renovate が修正版を `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` に書き足す。修正版が連れてくる新しい推移的な依存は書き足されない。インストールが失敗したら手で足す
+- コミットメッセージは Renovate の既定のまま、英語にする。bot のコミットは、日本語で書く規約の例外とする（`AGENTS.md`）
 
 Node.js は、`mise.toml` でメジャーの番号を指定する（`"26"`）。`"lts"` にすると、次のメジャーが LTS になった週に `mise.lock` だけが変わり、承認を経ずに週 1 回の PR に入る。カタログの `@types/node` のメジャーとも食い違う。
 
