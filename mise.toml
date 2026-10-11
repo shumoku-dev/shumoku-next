@@ -9,6 +9,9 @@ ghalint = "1"
 zizmor = "1"
 pinact = "5"
 
+[settings]
+minimum_release_age = "3d"
+
 [env]
 # vp は mise では入れられないので、pnpm で入れた vite-plus の bin を PATH に足す。
 # https://github.com/voidzero-dev/vite-plus/issues/943
