@@ -21,3 +21,5 @@ peerDependencyRules:
 trustPolicy: no-downgrade
 blockExoticSubdeps: true
 strictDepBuilds: true
+minimumReleaseAge: 4320
+minimumReleaseAgeExcludePrune: true
