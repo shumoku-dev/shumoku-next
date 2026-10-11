@@ -14,7 +14,7 @@
 - 構成 A: すべて TypeScript で書く
 - 構成 B: サーバーとコアのドメインロジックを Rust で書く。CLI とライブラリ向けにはコアを WASM にする。TypeScript 側は、Rust が組み立てたシーンを Svelte のコンポーネントで描き、イベントを付けるだけにする
 
-構成 A は、サーバーに Effect を使う A.1 と、valof と Result 型のライブラリを使う A.2 に分けて比較する。どちらを選ぶかと、API フレームワークは未決である。
+構成 A は、サーバーに Effect を使う A.1 と、valof と Result 型のライブラリを使う A.2 に分けて比較する。どちらを選ぶかは未決である。API フレームワークは、どちらでも Hono を第一候補にする。
 
 ### 言語選定の動機
 
@@ -80,9 +80,24 @@
 
 コアとサーバーで書き方をそろえるなら、ドメインの型と純粋な処理はどちらも valof で書き、Effect はサーバーの I/O の組み立てだけに使う。この場合、Effect のデータ型（タグ付きの union や Result 型）と valof の役割が重なるので、ドメインの型を valof で書くという規則が要る。コアが返す Result は、サーバーで Effect の値に変換する。
 
-API フレームワークの候補は Effect の [HttpApi](https://effect.website/docs/v4/api/effect/http-api/HttpApi) と [RPC](https://effect.website/docs/v4/api/effect/rpc/RpcServer) である。通常の HTTP API と OpenAPI を提供するなら HttpApi が合う。SPA とサーバーの通信を Effect の型付きクライアントでそろえるなら RPC が候補になる。Effect の採用だけでは API の形式は決まらず、Hono のハンドラーから Effect の処理を呼ぶ構成も取れる。
+API フレームワークは、構成 A.1 でも [Hono](https://hono.dev/) を第一候補にする。`effect/http-api` が stable になったら見直す。
 
-参照した資料は Effect 4.0.2 のもので、HttpApi と RPC は unstable として公開されている。採用するバージョンと API の安定性は、実装の前に確かめる。ただし、安定性は構成 A.1 と B の差にならない。構成 B でも、wasmtime は毎月メジャー版を上げて API を変え（49 系の時点で確かめた）、axum は 1.0 に達していない（0.8 系の時点で確かめた）。
+- Effect の HTTP の層（`effect/http`、`effect/http-api`、`effect/rpc`）は、全ファイルに `@stability unstable` が付いている（4.0.2 のパッケージで確かめた）。このタグの付いた API は、マイナーやパッチのリリースでも変わりうる。`Effect`、`Layer`、`Context` などのコアは大半が stable である
+- Shumoku はセルフホストなので、セキュリティ修正の取り込みが破壊的変更への追従と一緒になると、利用者の更新が遅れる。認証と認可を unstable な層に載せない
+- [HttpApi](https://effect.website/docs/v4/api/effect/http-api/HttpApi) は、認証のミドルウェアが提供するサービスを型に持ち、ミドルウェアの付け忘れがコンパイルエラーになる。Hono でも、ルートを定義する関数を 1 つにまとめれば、同じ検査ができる見込みである（試作していない）
+- HttpApi には実際の利用例がある。OpenCode はサーバーを Hono から HttpApi に移した（v1.14.42）
+- HttpApi と [RPC](https://effect.website/docs/v4/api/effect/rpc/RpcServer) にしかない利点は、型付きのクライアントの生成である。SPA のクライアントは OpenAPI からも生成できる
+
+Hono と Effect の境界は、ルートを定義する関数 1 つにまとめる。この関数は、必要な権限を必須の引数で受け取り、認可を確かめ、利用者をサービスとして提供して Effect を実行し、エラーを HTTP の応答に変換する。利用者を読む Effect は、この関数を通さないと依存が満たされず、コンパイルエラーになる。
+
+Hono と組み合わせるときは、次を守る。
+
+- Fiber の中で AsyncLocalStorage に頼る API を呼ばない。Hono の `contextStorage` も使わない。Effect のスケジューラーは複数の Fiber の継続を 1 つのコールバックでまとめて実行するので、別のリクエストのコンテキストが読める（CVE-2026-32887、3.20.0 で修正）。4.0.2 のソースは AsyncLocalStorage を参照しておらず、同じ問題が起きないかは確かめていない。リクエストごとの値は Effect のサービスとして渡す
+- HTTP クライアントも `effect/http` にあり unstable なので、ホストの `fetch` は標準の `fetch` を Effect で包んで書く
+
+リライト元は入出力のスキーマを zod で書いている（`@hono/zod-openapi`）。ドメインの検証に Effect の `Schema` を使うと、境界で zod と二重になる。Hono の検証と OpenAPI の生成を `Schema` から行えるかは確かめていない。
+
+依存の安定性は、構成 B でも問題になる。wasmtime は毎月メジャー版を上げて API を変え（49 系の時点で確かめた）、axum は 1.0 に達していない（0.8 系の時点で確かめた）。
 
 #### 構成 A.2: valof と Result 型のライブラリを使う
 
