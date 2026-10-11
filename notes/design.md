@@ -29,6 +29,26 @@ shumoku v1.0.0 リライトの設計記録。現在の設計と、そこに至�
 
 アプリの SSR とは別に、レイアウトエンジンとレンダラーはライブラリとして Node.js で動くようにする。mermaid のように組み込む利用者が、自分のドキュメントサイトでビルド時や SSR で図を描けるようにするためである。テキストの幅の計測は DOM に依存させず、ブラウザと Node.js で同じ方法で測る。測り方は未決（open-questions.md「テキストの幅の計測」）。
 
+#### SPA を SvelteKit の SPA モードで作る
+
+Hub の SPA は、SvelteKit の `adapter-static` の `fallback` と、ルートのレイアウトの `ssr = false` で作る。リライト元と同じ構成である（`apps/server/web/svelte.config.js`）。
+
+- ルーター、ネストしたレイアウト、ルートごとのコード分割、CSP のハッシュ（`csp.mode: 'hash'`）を SvelteKit に任せる
+- SvelteKit のサーバーの機能（`+page.server.ts`、`hooks.server.ts`、フォームアクション）は使わない。認可を API サーバーだけで判断するためである
+
+次の 2 点は確かめていない。通らなければ、この判断を見直す。
+
+- このリポジトリは `vite` を vite-plus に差し替えている。その上で SvelteKit が動くか
+- `apps/hub` を 1 つのパッケージにして `src/api` と `src/web` に分ける配置（open-questions.md「Hub のパッケージの中の分け方」）に、SvelteKit が収まるか
+
+#### 却下: Vite だけで SPA を作る
+
+SvelteKit を使わず、Vite と Svelte だけで作る案。Svelte の公式のルーターは SvelteKit だけなので、サードパーティのルーターを選ぶか自作することになる。ルーターの自作は負担が大きいので却下した。
+
+#### 却下: SPA をプリレンダーする
+
+SvelteKit でページをビルド時に描く（SSG）案。画面は認証の後ろにあり、動的なルートが中心なので、ビルド時に描ける中身がほとんどない。コンポーネントをビルド時に Node.js で実行できるように書く制約だけが増えるので却下した。
+
 #### API サーバーで画像を描かない
 
 API サーバーは、トポロジーを SVG や PNG にして返すエクスポートを持たない。トポロジーを画像にしたい利用者は、API から取得したトポロジーのデータを CLI に渡し、手元で描く。CLI は API を呼ばない。リライト元の `@shumoku/cli` と同じく、レイアウトエンジンとレンダラーを CLI としても公開する。
