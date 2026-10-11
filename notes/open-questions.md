@@ -743,3 +743,77 @@ Hub と Drafter について:
 - 境界を、すべてのディレクトリにするか、特定の名前のディレクトリ（`*.package` など）だけにするか
 - `.svelte` の `<script>` の import が検査されないことを受け入れるか
 - TypeScript を 7 系に上げるときに、oxlint-plugin-import-access へ乗り換えるか
+
+## 依存の脆弱性の検査
+
+依存に見つかった脆弱性を知る手段と、依存を更新する手段を決める。Dependabot alerts と Renovate はリポジトリのオーナーが有効にするので、作者と決めるまで、次の方針は未決とする。
+
+| 対象 | 脆弱性を知る手段 |
+| --- | --- |
+| アクション | zizmor のオンラインの検査（導入済み） |
+| npm の依存 | Dependabot alerts |
+| Node.js と pnpm | 通知を購読する。CI では検査しない |
+| ワークフローのリンター | 検査しない。週 1 回の更新で新しく保つ |
+| Docker イメージ | イメージの検査を毎日実行する |
+
+通常の更新は、Renovate で対象ごとに週 1 回の PR にまとめる。更新の PR を毎日出すと、その更新が緊急かどうかを人が PR ごとに判定することになる。緊急の更新は、更新の PR ではなく、この表の手段で知る。
+
+### アクションの脆弱性は zizmor で検査する
+
+`.github/workflows/workflows.yml` が、zizmor のオンラインの検査を毎日実行する。zizmor（1.30.1 で試した）は、SHA で固定したアクションの脆弱性を検出する。
+
+Dependabot alerts は使えない。GitHub は、アクションの alerts を、セマンティックバージョンで指定したものにだけ出す。このリポジトリはアクションを SHA で固定している。
+
+### npm の依存は Dependabot alerts で検査する
+
+Dependabot alerts は、アドバイザリの公開時に通知する。Dependabot は pnpm 12 に対応済みである（[dependabot-core#16095](https://github.com/dependabot/dependabot-core/issues/16095)）。
+
+### Node.js と pnpm の脆弱性は通知を購読して知る
+
+Node.js と pnpm は CI で検査せず、アドバイザリの通知を人が購読する。購読先の候補は、Node.js は nodejs-sec のメーリングリスト、pnpm は GitHub の `pnpm/pnpm` リポジトリの Watch（Security alerts）である。
+
+CI で検査する案は採らない（「依存の脆弱性の検査で採らない案」）。
+
+### ワークフローのリンターは検査しない
+
+actionlint、shellcheck、ghalint、zizmor、pinact は検査せず、週 1 回の更新で新しく保つ。リンターの入力はこのリポジトリのワークフローだけで、CI では `contents: read` の権限で動くので、脆弱性があっても悪用の経路がほとんどない。
+
+`mise.lock` を読んで脆弱性を照合するツールは見つかっていない。
+
+### Docker イメージの検査
+
+Hub のサーバーの Docker イメージを作ったら、イメージの脆弱性の検査を毎日の定期実行で走らせる。Node.js のランタイムの脆弱性は、開発と CI よりも、配布するサーバーで悪用されやすい。サーバーは外からの入力を受けるためである。
+
+検査の対象には、main のビルドだけでなく、公開済みのイメージも含める。利用者が動かしているのは公開済みの版で、新しい脆弱性はリリースの後に見つかる。
+
+### 依存の更新に Renovate を使う
+
+Renovate は、アクション、mise のツール、npm の依存を 1 つの設定で更新する。Dependabot の version updates は mise に対応していない。
+
+Renovate を使うには、Mend の GitHub App にリポジトリへの書き込み権限を与える。GitHub App を入れられるのは組織のオーナーである。
+
+Renovate の設定:
+
+- 週 1 回の PR は、日本時間の月曜 0 時から 4 時の間に作る（`schedule:earlyMondays` と `timezone: Asia/Tokyo`）
+- メジャー更新は承認制にする（`:approveMajorUpdates`）。Renovate が Dependency Dashboard の issue に一覧し、人がチェックを入れたものだけを PR にする。メジャー更新は移行の作業を伴うので、着手する時期を人が決める
+- 公開から 3 日経っていない版は入れない（`minimumReleaseAge`）。Renovate が npm のパッケージに勧める値で、npm が公開の取り消しを認める 72 時間を越える。pnpm にも同じ値を設定してある（`pnpm-workspace.yaml`）
+- 脆弱性の修正の PR は待機期間を待たない。pnpm は脆弱性の修正を区別しないので、Renovate が修正版を `pnpm-workspace.yaml` の `minimumReleaseAgeExclude` に書き足す。修正版が連れてくる新しい推移的な依存は書き足されない。インストールが失敗したら手で足す
+
+Node.js は、`mise.toml` でメジャーの番号を指定する（`"26"`）。`"lts"` にすると、次のメジャーが LTS になった週に `mise.lock` だけが変わり、承認を経ずに週 1 回の PR に入る。カタログの `@types/node` のメジャーとも食い違う。
+
+### 依存の脆弱性の検査で決まっていないこと
+
+- Dependabot alerts と Renovate を有効にすることを、作者と決める
+- Renovate が、pnpm のカタログ（`pnpm-workspace.yaml`）と `mise.lock` を更新できるか。Mend がホストするアプリでは確かめていない
+- Node.js と pnpm の通知を誰が購読するか
+- 定期実行の失敗を誰に通知するか
+- Docker イメージの検査に使うツール
+
+### 依存の脆弱性の検査で採らない案
+
+- Grype（0.120.1 で試した）を毎日の定期実行で走らせる案。npm の依存、アクション、Node.js、pnpm を検査できた。npm の依存とアクションには別の手段がある。残る Node.js と pnpm のために、3.2 GB のデータベースを実行のたびに取得することになる
+- Trivy（0.75.0 で試した）や OSV-Scanner（2.6.0 で試した）を使う案。どちらも Node.js のバイナリとアクションを検査できなかった
+- Grype で mise のインストール先の全体を検査する案。Go 製のリンターに、ビルドに使われた Go の標準ライブラリの脆弱性が多数出る。リンターが最新版でも出るので、更新では消せない。pnpm、zizmor、shellcheck からは何も検出されず、検査されていないのに脆弱性なしと表示される
+- `mise.lock` からパッケージの URL（purl）を作り、アドバイザリと照合する案。`mise.lock` にあるのは GitHub のリポジトリと版で、アドバイザリが登録されるエコシステム（npm、Go、crates.io）がわからない。Go 製のツール以外は、対応表を手で書くことになる
+- Renovate を脆弱性の修正だけに絞る案（`security:only-security-updates`）。Renovate は、SHA で固定したアクションと mise のツールの脆弱性を知る経路を持たない
+- mise のツールの更新だけを毎日にする案。PR ごとに緊急かどうかを人が判定することになる
