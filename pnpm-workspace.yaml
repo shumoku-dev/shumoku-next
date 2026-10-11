@@ -4,6 +4,7 @@ packages:
 
 catalog:
   "@types/node": ^26.6.4
+  knip: ^6.40.0
   typescript: ~6.0.3
   vite-plus: 1.1.0
   vite: npm:@voidzero-dev/vite-plus-core@1.1.0
