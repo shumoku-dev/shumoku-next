@@ -54,7 +54,7 @@ API サーバーは、トポロジーを SVG や PNG にして返すエクスポ
 
 検討した描き方は次の 2 つである。
 
-- 構成 B（design.md §3.1）のサーバーが、Svelte の SSR 用にコンパイルしたレンダラーを、プラグイン用に同梱する QuickJS（design.md §2.2）で動かして SVG を描き、Rust の `resvg` で PNG にする
+- 構成 B（design.md §2.1）のサーバーが、Svelte の SSR 用にコンパイルしたレンダラーを、プラグイン用に同梱する QuickJS（design.md §3.2）で動かして SVG を描き、Rust の `resvg` で PNG にする
 - サーバーが CLI を子プロセスとして動かして画像を描く。構成 B ではサーバーの配布物に Node.js が入り、単一のバイナリで配布できなくなる
 
 ### バックエンドと BFF に分ける案
@@ -72,7 +72,7 @@ API サーバーは、トポロジーを SVG や PNG にして返すエクスポ
 
 ## サーバーに Effect を使うか
 
-サーバーに Effect を使うかどうかを決める。すべて TypeScript で書くことは決まっている（design.md §3.1）。コアができてから決める。構成 A.2 に傾いている。
+サーバーに Effect を使うかどうかを決める。すべて TypeScript で書くことは決まっている（design.md §2.1）。コアができてから決める。構成 A.2 に傾いている。
 
 - 構成 A.1: サーバーに Effect を使う
 - 構成 A.2: サーバーに valof と Result 型のライブラリを使う
@@ -307,7 +307,7 @@ Svelte: [シーン] → SVG の要素
 
 ### JSON Schema から生成する型の試作
 
-JSON Schema（design.md §3.2）から生成した TypeScript の型で、`oneOf` と判別子が判別可能な union になるか。
+JSON Schema（design.md §2.2）から生成した TypeScript の型で、`oneOf` と判別子が判別可能な union になるか。
 
 ### レイアウトエンジンのコアの試作
 
@@ -340,7 +340,7 @@ LP をこのモノレポに戻すかどうかを決める。緊急ではない�
 `apps/server` は 1 つのパッケージにし、中をディレクトリで分ける案を考えている。
 
 - API サーバーと SPA を `src/api` と `src/web` に分け、tsconfig と lint で境界を守る。リライト元は `apps/server/api` と `apps/server/web` の 2 つのパッケージに分けていた。SPA の依存は Vite がバンドルするので、すべて devDependencies に置ける
-- 組み込みのプラグインは `apps/server/plugins/` のディレクトリに置く。QuickJS で動かすスクリプトで（design.md §2.3）、使うのは Server だけである。リライト元は `libs/plugins/*` に 9 つのパッケージを置いていた
+- 組み込みのプラグインは `apps/server/plugins/` のディレクトリに置く。QuickJS で動かすスクリプトで（design.md §3.3）、使うのは Server だけである。リライト元は `libs/plugins/*` に 9 つのパッケージを置いていた
 
 Server と Drafter で UI の部品（ボタンやダイアログ）を共有したくなったら、`libs/ui` のような private なパッケージに切り出す。最初は作らない。
 
@@ -349,7 +349,7 @@ Server と Drafter で UI の部品（ボタンやダイアログ）を共有し
 パッケージの分割（design.md §4）のうち、次は決まっていない。
 
 - Declarative Shadow DOM を出力する custom element が、SSR とハイドレーションで期待どおりに動くか（design.md §4.4「ラッパーは Declarative Shadow DOM を出力する custom element を包む」）
-- プラグインのホストの API の `.d.ts`（design.md §2.1）をどこで配るか。プラグインは Server でしか動かないので、`@shumoku/renderer` には入れない。型だけのパッケージを公開する案と、Server からダウンロードさせる案がある
+- プラグインのホストの API の `.d.ts`（design.md §3.1）をどこで配るか。プラグインは Server でしか動かないので、`@shumoku/renderer` には入れない。型だけのパッケージを公開する案と、Server からダウンロードさせる案がある
 - ファイル形式の版をファイルに書くか。Server が保存したファイルを古い CLI が読む場合に要る。拡張子（`.shumoku.yaml` など）も決めていない
 - Server の版を `@shumoku/renderer` と別に付けるか。レンダラーの版はライブラリの利用者に、Server の版は運用者に向けたものである
 - スコープなしの `shumoku` の扱い（design.md §4.8）。非推奨にして `@shumoku/renderer` に誘導する案に傾いている。`@shumoku/renderer` を再エクスポートするだけのパッケージとして残す案もある。名前から推測して `npm i shumoku` する人が古い版を入れずに済むが、公開するパッケージが 1 つ増え、`/react` などのエクスポートと peer の依存を二重に書くことになる。名前はリライト元が持っているので、要望が出てから 1.x として出せる
@@ -405,7 +405,7 @@ AGPL-3.0 より厳しいライセンスにはしない。リライト元の商�
 
 ### プラグインを AGPL-3.0 の対象外にする
 
-プラグインのホストの API の型定義（design.md §2.1）は緩いライセンスで配り、利用者が書くプラグインは AGPL-3.0 の対象外であると明記する案を考えている。
+プラグインのホストの API の型定義（design.md §3.1）は緩いライセンスで配り、利用者が書くプラグインは AGPL-3.0 の対象外であると明記する案を考えている。
 
 - プラグインは Server の中で動くので、何も書かなければ、Server の派生物として AGPL-3.0 の対象になるかどうかが曖昧になる
 - リライト元の `COMMERCIAL_SUPPORT.md` は、顧客向けに開発したプラグインを非公開のままにできるとしている。この扱いは、プラグインが AGPL-3.0 の対象外であることを前提にしている
