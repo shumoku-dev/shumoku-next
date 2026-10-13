@@ -5,5 +5,5 @@
     "lib": ["es2025"],
     "types": ["node"]
   },
-  "include": ["*.ts"]
+  "include": ["*.ts", ".agents/**/*.ts"]
 }

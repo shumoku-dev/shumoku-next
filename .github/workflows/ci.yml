@@ -38,3 +38,6 @@ jobs:
 
       - name: Knip
         run: pnpm exec knip
+
+      - name: Design notes
+        run: node .agents/skills/design-notes/scripts/section-id.ts check

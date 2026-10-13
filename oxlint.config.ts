@@ -2,6 +2,8 @@ import type { OxlintConfig } from "vite-plus/lint";
 
 export default {
   plugins: ["typescript", "unicorn", "oxc", "promise", "import"],
+  // .agents へのシンボリックリンクなので、.agents の側だけを検査する。
+  ignorePatterns: [".claude/**", ".codex/**"],
   options: {
     typeAware: true,
     typeCheck: true,
