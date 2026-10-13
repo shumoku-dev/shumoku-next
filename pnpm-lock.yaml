@@ -15,6 +15,9 @@ catalogs:
     typescript:
       specifier: ~6.0.3
       version: 6.0.3
+    valof:
+      specifier: ^0.8.2
+      version: 0.8.2
     vite-plus:
       specifier: 1.1.0
       version: 1.1.0
@@ -35,6 +38,9 @@ importers:
       typescript:
         specifier: 'catalog:'
         version: 6.0.3
+      valof:
+        specifier: 'catalog:'
+        version: 0.8.2(oxc-parser@0.150.0)
       vite-plus:
         specifier: 'catalog:'
         version: 1.1.0(@types/node@26.6.4)(@vitest/ui@5.0.3)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.1)
@@ -1249,6 +1255,15 @@ packages:
   undici-types@8.9.0:
     resolution: {integrity: sha512-KTDyRTYX8sWmKXAikPHHSyc63CRPETMctyjKFupcC6OBLXT3xsN0e9aF7m+mIXutFWpUXuedtowG7iLOzp0kQg==}
 
+  valof@0.8.2:
+    resolution: {integrity: sha512-eQ/vthnCn3RytW1XHrESxS62REw4yos8q5J/7w+skY/Fsa3AVHEBjuMpSwou/g9Ef5q7C/k0LwQXAIAcvXxFeA==}
+    hasBin: true
+    peerDependencies:
+      oxc-parser: '>=0.148'
+    peerDependenciesMeta:
+      oxc-parser:
+        optional: true
+
   vite-plus@1.1.0:
     resolution: {integrity: sha512-khkRlY70qqbBV0QmF9QKXSrhxIRYftb1H05AJMowMoq7iouchmAoXYeReZ8pKKMOadqrWVxFa3S9BA2m7w59iA==}
     engines: {node: ^22.18.0 || ^24.11.0 || >=26.0.0}
@@ -2235,6 +2250,10 @@ snapshots:
   unbash@4.0.12: {}
 
   undici-types@8.9.0: {}
+
+  valof@0.8.2(oxc-parser@0.150.0):
+    optionalDependencies:
+      oxc-parser: 0.150.0
 
   vite-plus@1.1.0(@types/node@26.6.4)(@vitest/ui@5.0.3)(jiti@2.7.0)(typescript@6.0.3)(yaml@2.9.1):
     dependencies:

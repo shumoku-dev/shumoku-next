@@ -10,6 +10,7 @@
     "@types/node": "catalog:",
     "knip": "catalog:",
     "typescript": "catalog:",
+    "valof": "catalog:",
     "vite-plus": "catalog:"
   }
 }

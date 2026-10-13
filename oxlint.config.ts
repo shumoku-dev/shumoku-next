@@ -162,6 +162,8 @@ export default {
     "typescript/no-deprecated": "error",
     "typescript/no-dynamic-delete": "error",
     "typescript/no-empty-object-type": "error",
+    // valof の Enum では、フィールドのないバリアントを Record<never, never> と書く。
+    "typescript/no-generated-empty-object-type": "off",
     "typescript/no-invalid-void-type": "error",
     "typescript/prefer-nullish-coalescing": "error",
     radix: "error",
