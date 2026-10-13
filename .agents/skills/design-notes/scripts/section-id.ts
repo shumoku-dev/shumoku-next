@@ -147,7 +147,16 @@ type Command = Enum<
     Invalid: { message: string };
   }
 >;
-const Command = Enum.sealer<Command>().impl({
+const Command = Enum.companion<Command>()
+  .implVariant("New", (variant) =>
+    variant.implSeal(
+      (value, seal): Command =>
+        Number.isInteger(value.count) && value.count >= 1
+          ? seal(value)
+          : Command.Invalid.create({ message: "個数は 1 以上の整数で指定する" }),
+    ),
+  )
+  .impl({
   // 終了コードを返す。
   run(command): number {
     return Command.match(command, {
@@ -169,13 +178,14 @@ const Command = Enum.sealer<Command>().impl({
   },
 });
 
-const parseCommand = ([name, argument]: readonly string[]): Command => {
-  if (name === "check") return Command.Check({});
-  if (name !== "new") return Command.Invalid({ message: "使い方: section-id.ts new [個数] | check" });
-  const count = Number(argument ?? "1");
-  return Number.isInteger(count) && count >= 1
-    ? Command.New({ count })
-    : Command.Invalid({ message: "個数は 1 以上の整数で指定する" });
-};
+// コマンドの名前からバリアントを選ぶ。どれでもない名前は Invalid にする。
+const TAGS: Readonly<Record<string, "New" | "Check">> = { new: "New", check: "Check" };
+
+const parseCommand = ([name = "", argument = "1"]: readonly string[]): Command =>
+  Command.seal({
+    _tag: TAGS[name] ?? "Invalid",
+    count: Number(argument),
+    message: "使い方: section-id.ts new [個数] | check",
+  });
 
 process.exitCode = Command.run(parseCommand(process.argv.slice(2)));
