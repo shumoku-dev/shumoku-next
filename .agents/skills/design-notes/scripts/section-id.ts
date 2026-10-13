@@ -1,5 +1,5 @@
 // 設計メモの見出しに振る ID（16 進 8 桁）を発行し、検査する。
-// ID は見出しの直前の行に <!-- id: xxxxxxxx --> と書き、ref:xxxxxxxx で参照する。
+// ID は見出しの直前の行に <!-- id:xxxxxxxx --> と書き、ref:xxxxxxxx で参照する。
 //
 //   node .agents/skills/design-notes/scripts/section-id.ts new [個数]
 //   node .agents/skills/design-notes/scripts/section-id.ts check
@@ -37,9 +37,9 @@ const Line = Val.sealer<Line>().impl({
   isHeading(line): boolean {
     return /^#{2,6} /.test(line.text) && !HEADINGS_WITHOUT_ID.has(line.text);
   },
-  // <!-- id: xxxxxxxx --> の行が定義する ID。
+  // <!-- id:xxxxxxxx --> の行が定義する ID。
   definedId(line): SectionId | undefined {
-    const id = /^<!-- id: ([0-9a-f]{8}) -->$/.exec(line.text)?.[1];
+    const id = /^<!-- id:([0-9a-f]{8}) -->$/.exec(line.text)?.[1];
     return id === undefined ? undefined : SectionId.seal(id);
   },
 });
@@ -87,7 +87,7 @@ const idAtEnd = (match: string): readonly SectionId[] => {
 
 // 作業ツリーと、すべてのローカルブランチにある ID。別のブランチで発行した ID とも衝突させない。
 const usedIds = (): ReadonlySet<SectionId> => {
-  const pattern = `(id: |ref:)[0-9a-f]{8}`;
+  const pattern = `(id|ref):[0-9a-f]{8}`;
   const branches = git("for-each-ref", "--format=%(refname)", "refs/heads");
   return new Set(
     [
