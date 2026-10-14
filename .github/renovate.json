@@ -1,0 +1,31 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "schedule:earlyMondays",
+    "helpers:pinGitHubActionDigests",
+    ":approveMajorUpdates",
+    ":semanticCommits"
+  ],
+  "timezone": "Asia/Tokyo",
+  "minimumReleaseAge": "3 days",
+  "npm": {
+    "lockFileMaintenance": { "enabled": true }
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "groupName": "GitHub Actions"
+    },
+    {
+      "matchManagers": ["mise"],
+      "groupName": "mise tools"
+    },
+    {
+      "description": "範囲の中の更新はロックファイルの保守に任せ、範囲を書き換える更新だけを PR にする。",
+      "matchManagers": ["npm"],
+      "groupName": "npm dependencies",
+      "rangeStrategy": "replace"
+    }
+  ]
+}

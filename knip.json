@@ -1,0 +1,7 @@
+{
+  "workspaces": {
+    ".": {
+      "entry": [".agents/skills/*/scripts/*.ts"]
+    }
+  }
+}

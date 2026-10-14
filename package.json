@@ -1,0 +1,16 @@
+{
+  "name": "shumoku",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare": "vp config"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "knip": "catalog:",
+    "typescript": "catalog:",
+    "valof": "catalog:",
+    "vite-plus": "catalog:"
+  }
+}

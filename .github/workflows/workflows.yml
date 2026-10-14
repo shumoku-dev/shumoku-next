@@ -1,0 +1,55 @@
+name: Workflows
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/**
+      - mise.toml
+      - mise.lock
+  pull_request:
+    paths:
+      - .github/**
+      - mise.toml
+      - mise.lock
+  schedule:
+    - cron: "17 0 * * *"
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: jdx/mise-action@2d8d4cafcbd33be2ea37d2b6f5ad595363d1f1ca # v5.1.1
+        with:
+          install_args: actionlint shellcheck ghalint zizmor pinact
+
+      - name: actionlint
+        run: actionlint
+
+      - name: ghalint
+        run: ghalint run
+
+      - name: zizmor
+        run: zizmor --pedantic .
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: pinact
+        run: pinact run --check --verify-comment
+        env:
+          GITHUB_TOKEN: ${{ github.token }}

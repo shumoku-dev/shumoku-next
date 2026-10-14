@@ -1,0 +1,21 @@
+[tools]
+node = "26"
+pnpm = "12"
+
+# GitHub Actions の検査
+actionlint = "1"
+shellcheck = "0.11"
+ghalint = "1"
+zizmor = "1"
+pinact = "5"
+
+[settings]
+minimum_release_age = "3d"
+
+[env]
+# vp は mise では入れられないので、pnpm で入れた vite-plus の bin を PATH に足す。
+# https://github.com/voidzero-dev/vite-plus/issues/943
+_.path = ["node_modules/vite-plus/bin"]
+
+[hooks]
+postinstall = "mise lock --platform macos-arm64,macos-x64,linux-x64,linux-x64-musl,linux-arm64,linux-arm64-musl,windows-x64"
