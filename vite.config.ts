@@ -1,4 +1,4 @@
-import { defineConfig } from "vite-plus";
+import { configDefaults, defineConfig } from "vite-plus";
 
 import fmt from "./oxfmt.config";
 import lint from "./oxlint.config";
@@ -6,6 +6,10 @@ import lint from "./oxlint.config";
 export default defineConfig({
   fmt,
   lint,
+  test: {
+    // 依存が変わったら、CI の --changed でもすべてのテストを実行する。
+    forceRerunTriggers: [...configDefaults.forceRerunTriggers, "**/pnpm-lock.yaml"],
+  },
   staged: {
     "*": "vp check --fix",
   },
