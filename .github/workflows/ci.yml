@@ -30,14 +30,31 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # https://viteplus.dev/guide/github-actions-cache
+      - name: Restore Vite Task cache
+        id: vite-task-cache
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules/.vite/task-cache
+          key: vite-task-${{ runner.os }}-${{ runner.arch }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            vite-task-${{ runner.os }}-${{ runner.arch }}-
+
       - name: Format, lint, and type check
-        run: pnpm exec vp check
+        run: pnpm exec vp run check
 
       - name: Test
-        run: pnpm exec vp test --passWithNoTests
+        run: pnpm exec vp run test
 
       - name: Knip
-        run: pnpm exec knip
+        run: pnpm exec vp run knip
 
       - name: Design notes
-        run: node .agents/skills/design-notes/scripts/section-id.ts check
+        run: pnpm exec vp run design-notes
+
+      - name: Save Vite Task cache
+        if: success()
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: node_modules/.vite/task-cache
+          key: ${{ steps.vite-task-cache.outputs.cache-primary-key }}
